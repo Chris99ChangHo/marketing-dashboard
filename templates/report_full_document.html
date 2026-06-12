@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<!--
+report_full_document.html: HTML template for generating comprehensive PDF marketing reports.
+
+This file defines the structure, content, and styling for the multi-page PDF reports.
+It is designed to be rendered by the `pdf_generator.py` module, not directly in a web browser.
+It dynamically incorporates data from Google Analytics, SE Ranking, and AI-generated summaries,
+along with charts and custom cover images.
+
+Key Aspects:
+- Defines page layouts and breaks using CSS `@page` rules for PDF optimization.
+- Utilizes Jinja2 templating to inject dynamic data (e.g., client info, GA4 metrics,
+  SERanking data, AI summary, chart images, cover images).
+- Incorporates multi-language font support via `@font-face` rules to ensure proper
+  rendering of Korean and other character sets in the PDF.
+- Structures the report into logical sections: Cover Page, Table of Contents,
+  SEO Introduction & Services, Keyword Rankings, Audience Reports (Visitors, Page Views,
+  Devices, Traffic Sources), GNA Solutions overview, and Back Cover.
+
+Dependencies:
+- Jinja2 (for server-side template rendering)
+- CSS (for styling and PDF-specific layout)
+- Data from `ga4_service.py`, `seranking_service.py`, `pdf_generator.py` (for images)
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>
+      {{ selected_client.name }} Report - {{ report_period_month_year }}
+    </title>
+    <meta name="viewport" content="width=1200" />
+    <style>
+      /* --- Multi-language Font Setup --- */
+      @font-face {
+        font-family: "NotoSans-Regular";
+        src: url("{{ font_paths.noto_sans | string }}");
+      }
+      @font-face {
+        font-family: "NotoSansKR-Regular";
+        src: url("{{ font_paths.noto_sans_kr | string }}");
+      }
+      @font-face {
+        font-family: "NotoSansSC-Regular";
+        src: url("{{ font_paths.noto_sans_sc | string }}");
+      }
+
+      @page {
+        size: A3 landscape;
+        margin: 8mm;
+      }
+
+      @page cover_page {
+        size: A3 landscape;
+        margin: 0;
+      }
+
+      .cover-table,
+      .back-cover-table {
+        width: 404mm;
+        height: 281mm;
+        border-collapse: collapse;
+        margin: 0 auto;
+        page-break-after: always;
+      }
+
+      .back-cover-table {
+        page-break-after: avoid;
+      }
+
+      .cover-cell,
+      .back-cover-cell {
+        width: 404mm;
+        height: 281mm;
+        text-align: center;
+        vertical-align: middle;
+        padding: 0;
+        border: none;
+      }
+
+      .cover-image,
+      .back-cover-image {
+        max-width: 404mm;
+        max-height: 281mm;
+        width: auto;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "NotoSans-Regular", "NotoSansKR-Regular",
+          "NotoSansSC-Regular", sans-serif;
+        width: 420mm;
+        min-height: 297mm;
+        background: #fff;
+        color: #222;
+        box-sizing: border-box;
+      }
+
+      .page-section {
+        max-width: 404mm;
+        min-width: 320mm;
+        margin: 8mm auto;
+        padding: 15px;
+        background: #fff;
+        box-sizing: border-box;
+        position: relative;
+        overflow: hidden;
+        page-break-after: always;
+        page-break-inside: avoid;
+      }
+
+      .cover-page-container {
+        page: cover_page;
+        width: 404mm;
+        height: 281mm;
+        position: relative;
+        page-break-after: always;
+      }
+
+      .back-cover-container {
+        page: cover_page;
+        width: 404mm;
+        height: 281mm;
+        position: relative;
+        page-break-after: avoid;
+      }
+
+      .cover-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+      }
+
+      .cover-text-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: table;
+        color: #fff;
+      }
+
+      .cover-text-cell {
+        display: table-cell;
+        vertical-align: middle;
+        text-align: center;
+      }
+
+      .back-cover-text-cell {
+        display: table-cell;
+        vertical-align: bottom;
+        text-align: center;
+        padding-bottom: 30mm;
+      }
+
+      .compact-section {
+        min-height: auto !important;
+      }
+
+      .page-section:last-child {
+        page-break-after: auto;
+      }
+
+      .force-page-break {
+        page-break-after: always !important;
+      }
+
+      .page-section.no-page-break {
+        page-break-after: avoid !important;
+        page-break-before: avoid !important;
+      }
+
+      .combined-section {
+        min-height: auto;
+      }
+
+      h1 {
+        font-size: 34pt;
+        color: black;
+        border-bottom: 2px solid black;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
+
+      h2 {
+        font-size: 28pt;
+        font-weight: bold;
+        margin: 18px 0 12px 0;
+      }
+
+      h3 {
+        font-size: 24pt;
+        font-weight: bold;
+        margin: 16px 0 10px 0;
+      }
+
+      p {
+        font-size: 20pt;
+        margin: 10px 0;
+      }
+
+      ul {
+        font-size: 20pt;
+        margin: 10px 0;
+        padding-left: 30px;
+      }
+
+      li {
+        margin-bottom: 6px;
+      }
+
+      table {
+        border-collapse: collapse;
+        margin: 10px;
+        background: #fff;
+        width: 380mm;
+      }
+
+      th,
+      td {
+        border: 1px solid #e3e3e3;
+        padding: 8px 8px;
+        text-align: left;
+        word-wrap: break-word;
+        vertical-align: middle;
+        line-height: 1.3;
+      }
+
+      th {
+        background: #f3f3f3;
+        font-weight: 600;
+        color: #1b2232;
+        font-size: 16pt;
+      }
+
+      td {
+        font-size: 16pt;
+      }
+
+      .keyword-table td:first-child {
+        font-family: "NotoSansKR-Regular", "NotoSansSC-Regular", "NotoSans-Regular", sans-serif;
+        font-weight: normal;
+      }
+
+      .keyword-table th,
+      .keyword-table td {
+        padding: 6px 8px;
+        line-height: 1.3;
+      }
+
+      .seo-services-table .service-col {
+        font-size: 18pt;
+        font-weight: bold;
+      }
+
+      .seo-services-table .description-col ul {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 15pt;
+      }
+
+      .seo-services-table .description-col li {
+        margin-bottom: 2px;
+      }
+
+      .info-box {
+        background: #fcfcfc;
+        border: 1px solid #e2e2e2;
+        padding: 22px;
+        font-size: 18pt;
+        margin-bottom: 18px;
+        color: #222;
+      }
+
+      .chart-container-pdf {
+        max-width: 300mm;
+        margin: 10px auto;
+        padding: 5px;
+        background: #fff;
+        border: 1px solid #eee;
+        page-break-inside: avoid;
+        text-align: center;
+      }
+
+      .chart-container-pdf img {
+        max-width: 380mm;
+        height: auto;
+        max-height: 120mm;
+      }
+
+      .terms-section .terms-title {
+        font-size: 18pt;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+
+      .terms-section .terms-list {
+        font-size: 15pt;
+        padding-left: 25px;
+        margin-top: 0;
+      }
+
+      .terms-section .terms-list li {
+        margin-bottom: 2px;
+        line-height: 1.2;
+      }
+
+      .change-up {
+        color: #10b981; /* Green for up */
+        font-weight: bold;
+      }
+
+      .rank-down {
+        color: #6b7280; /* Gray for down */
+        font-weight: bold;
+      }
+
+      .change-same {
+        color: black; /* Black for no change */
+      }
+
+      .change-na {
+        color: #9ca3af; /* Gray for N/A */
+      }
+
+      img {
+        max-width: 400mm;
+        height: auto;
+      }
+
+      .compact-keyword-section {
+        padding: 10px 15px;
+      }
+
+      .compact-keyword-section h1 {
+        margin-bottom: 12px;
+      }
+
+      .compact-keyword-section .info-box {
+        margin-bottom: 12px;
+        padding: 18px;
+      }
+
+      .ranking-period {
+        font-style: italic;
+        font-size: 16pt;
+        margin: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Cover Page -->
+    <table class="cover-table">
+      <tr>
+        <td class="cover-cell">
+          <img
+            class="cover-image"
+            src="data:image/png;base64,{{ front_cover_image_base64 }}"
+            alt="Cover"
+          />
+        </td>
+      </tr>
+    </table>
+
+    <!-- Table of Contents -->
+    <div class="page-section">
+      <h1>TABLE OF CONTENTS</h1>
+      <ul
+        style="
+          font-size: 30pt;
+          font-weight: bold;
+          padding-left: 18px;
+          margin-top: 30px;
+          margin-bottom: 16px;
+          list-style-type: none;
+          color: black;
+        "
+      >
+        <li>1. SEO Introduction & Services</li>
+        <li>2. Keyword Ranking</li>
+        <li>3. Ranking Segment Summary</li>
+        <li>4. Google Audience Report</li>
+        <li>5. GNA Solutions</li>
+      </ul>
+    </div>
+
+    <!-- SEO Introduction -->
+    <div class="page-section">
+      <h1>SEO INTRODUCTION</h1>
+      <table style="border-collapse: collapse">
+        <tr>
+          <td style="vertical-align: middle; padding-right: 18px">
+            <div class="info-box">
+              GNA Solutions has extensive experience in web design, app
+              development, and online marketing. Our marketing solutions are
+              designed to attract potential clients to your website and improve
+              overall business efficiency, providing a competitive edge in the
+              online marketplace. Our natural and ethical optimisation
+              techniques are guaranteed to deliver quality, focused, and timely
+              results.
+            </div>
+          </td>
+          <td style="vertical-align: middle; text-align: center">
+            <img
+              src="data:image/png;base64,{{ seo_intro_image_base64 }}"
+              alt="SEO Introduction"
+              style="height: auto; display: block; margin: auto"
+            />
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- SEO Services -->
+    <div class="page-section">
+      <h1>SEO SERVICES</h1>
+      <table class="seo-services-table">
+        <thead>
+          <tr>
+            <th style="width: 30%">Services</th>
+            <th>Descriptions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="service-col">Keywords Analysis</td>
+            <td class="description-col">
+              <ul>
+                <li>Find suitable keywords related to your business</li>
+                <li>Analyze keyword competitiveness</li>
+                <li>Strategic approach to achieve your marketing goals</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td class="service-col">Search Engine Registration</td>
+            <td class="description-col">
+              <ul>
+                <li>Submit your website to Google for indexation</li>
+                <li>Use Google Webmaster Tools for website analysis</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td class="service-col">Online Directory Registrations</td>
+            <td class="description-col">
+              <ul>
+                <li>Submit website to SEO-friendly directories</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td class="service-col">Onsite Optimisation</td>
+            <td class="description-col">
+              <ul>
+                <li>Website Title and Meta Tag Optimisation</li>
+                <li>Website Content and Structure Optimisation</li>
+                <li>Error checking and fixing</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td class="service-col">Link Building</td>
+            <td class="description-col">
+              <ul>
+                <li>Blog commenting, guest posts, forum posts</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td class="service-col">Google Analytics Report</td>
+            <td class="description-col">
+              <ul>
+                <li>Google Analytics Installation</li>
+                <li>Monthly website traffic and source reports</li>
+              </ul>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Keyword Rankings 1 -->
+    <div class="page-section compact-keyword-section">
+      <h1>KEYWORD RANKINGS</h1>
+      <table style="border-collapse: collapse">
+        <tr>
+          <td style="vertical-align: middle; padding-right: 18px">
+            <div class="info-box">
+              This table shows keyword rankings for the selected period.
+            </div>
+          </td>
+          <td style="vertical-align: middle; text-align: center">
+            <img
+              src="data:image/png;base64,{{ ser_ranking_image_base64 }}"
+              alt="SER Ranking"
+              style="height: auto; display: block; margin: auto"
+            />
+          </td>
+        </tr>
+      </table>
+      <div class="ranking-period">{{ seranking_data.report_period }}</div>
+      <table class="keyword-table">
+        <thead>
+          <tr>
+            <th>Keyword</th>
+            <th>Last Month Rank</th>
+            <th>Current Month Rank</th>
+            <th>Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for kw in seranking_data.keyword_rankings %}
+          <tr>
+            <td>{{ kw.keyword }}</td>
+            <td>{{ kw.previous_rank|safe }}</td>
+            <td>{{ kw.current_rank|safe }}</td>
+            <td>
+              <span class="{{ kw.change_class }}">{{ kw.change_display }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Keyword Rankings 2 -->
+    <div class="page-section">
+      <h1>KEYWORD RANKINGS</h1>
+      <table style="border-collapse: collapse">
+        <tr>
+          <td style="vertical-align: middle; padding-right: 18px">
+            <div class="info-box">
+              The following table shows the ranking segments of previous month
+              and the current month.
+            </div>
+          </td>
+          <td style="vertical-align: middle; text-align: center">
+            <img
+              src="data:image/png;base64,{{ ser_ranking_image_base64 }}"
+              alt="SER Ranking"
+              style="height: auto; display: block; margin: auto"
+            />
+          </td>
+        </tr>
+      </table>
+      <h3>Segment Summary</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Segment</th>
+            <th><strong style="color: #2585c9; font-size: 18pt">R1</strong></th>
+            <th><strong style="color: #06b254; font-size: 18pt">R2</strong></th>
+            <th><strong style="color: #ffc207; font-size: 18pt">R3</strong></th>
+            <th><strong style="color: #7131a1; font-size: 18pt">R4</strong></th>
+            <th><strong style="color: #ff4242; font-size: 18pt">R5</strong></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Previous Month</td>
+            <td>
+              {{ seranking_data.segment_summary.R1.previous_month | default(0)
+              }}
+            </td>
+            <td>
+              {{ seranking_data.segment_summary.R2.previous_month | default(0)
+              }}
+            </td>
+            <td>
+              {{ seranking_data.segment_summary.R3.previous_month | default(0)
+              }}
+            </td>
+            <td>
+              {{ seranking_data.segment_summary.R4.previous_month | default(0)
+              }}
+            </td>
+            <td>
+              {{ seranking_data.segment_summary.R5.previous_month | default(0)
+              }}
+            </td>
+          </tr>
+          <tr>
+            <td>Current Month</td>
+            <td>
+              {{ seranking_data.segment_summary.R1.current_month | default(0) }}
+            </td>
+            <td>
+              {{ seranking_data.segment_summary.R2.current_month | default(0) }}
+            </td>
+            <td>
+              {{ seranking_data.segment_summary.R3.current_month | default(0) }}
+            </td>
+            <td>
+              {{ seranking_data.segment_summary.R4.current_month | default(0) }}
+            </td>
+            <td>
+              {{ seranking_data.segment_summary.R5.current_month | default(0) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Audience Report (Visitors) -->
+    <div class="page-section">
+      <h1>AUDIENCE REPORT (VISITORS)</h1>
+      <h3 class="terms-title">Terms</h3>
+      <ul class="terms-list">
+        <li><strong>Sessions:</strong> the number of visits to your site.</li>
+        <li>
+          <strong>New Users:</strong> the number of visitors who have never
+          accessed your website before.
+        </li>
+        <li>
+          <strong>Returning Users:</strong> the number of visitors who have
+          accessed your website before.
+        </li>
+      </ul>
+      <table>
+        <thead>
+          <tr>
+            <th>Visitors</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sessions</td>
+            <td>{{ ga4_data.total_sessions | int }}</td>
+          </tr>
+          <tr>
+            <td>New Users</td>
+            <td>{{ ga4_data.new_users | int }}</td>
+          </tr>
+          <tr>
+            <td>Returning Users</td>
+            <td>{{ ga4_data.returning_users | int }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Audience Report (Page Views) with Chart -->
+    <div class="page-section combined-section">
+      <h1>AUDIENCE REPORT (PAGE VIEWS)</h1>
+      <h3 class="terms-title">Terms</h3>
+      <ul class="terms-list">
+        <li>
+          <strong>Total Page Views:</strong> the total number of pages viewed.
+          Repeated views of a single page are counted.
+        </li>
+        <li>
+          <strong>Page / Visit:</strong> the average number of pages viewed
+          during a visit to your site. Repeated views of a single page are
+          counted.
+        </li>
+        <li>
+          <strong>Average Engagement Time:</strong> the average time of
+          engagement during a session.
+        </li>
+        <li>
+          <strong>Engagement Rate:</strong> the percentage of single-page
+          visits, visits in which the person left your site from the entrance
+          page.
+        </li>
+      </ul>
+      <table>
+        <thead>
+          <tr>
+            <th>Page Views</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Total Page Views</td>
+            <td>{{ ga4_data.total_page_views | int }}</td>
+          </tr>
+          <tr>
+            <td>Page / Visit</td>
+            <td>{{ ga4_data.page_per_visit | round(2) }}</td>
+          </tr>
+          <tr>
+            <td>Average Engagement Time</td>
+            <td>{{ ga4_data.average_engagement_time | round(2) }}s</td>
+          </tr>
+          <tr>
+            <td>Engagement Rate</td>
+            <td>{{ (ga4_data.engagement_rate * 100) | round(2) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="chart-container-pdf no-page-break">
+        <img
+          src="data:image/png;base64,{{ page_views_chart_base64 }}"
+          alt="Page Views Comparison Chart"
+          style="width: 400mm; height: auto"
+        />
+      </div>
+    </div>
+
+    <!-- Audience Report (Devices) with Chart -->
+    <div class="page-section combined-section">
+      <h1>AUDIENCE REPORT (DEVICES)</h1>
+      <table>
+        <thead>
+          <tr>
+            <th>Device</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Mobile</td>
+            <td>{{ ga4_data.device_users.mobile | int }}</td>
+          </tr>
+          <tr>
+            <td>Desktop</td>
+            <td>{{ ga4_data.device_users.desktop | int }}</td>
+          </tr>
+          <tr>
+            <td>Tablet</td>
+            <td>{{ ga4_data.device_users.tablet | int }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="chart-container-pdf no-page-break">
+        <img
+          src="data:image/png;base64,{{ device_users_chart_base64 }}"
+          alt="Device Users Comparison Chart"
+          style="width: 400mm; height: auto"
+        />
+      </div>
+    </div>
+
+    <!-- Audience Report (Traffic Sources) with Chart -->
+    <div class="page-section combined-section">
+      <h1>AUDIENCE REPORT (TRAFFIC SOURCES)</h1>
+      <h3 class="terms-title">Terms</h3>
+      <ul class="terms-list">
+        <li>
+          <strong>Search Traffic:</strong> the traffic from search engines such
+          as Google, Yahoo, Bing, etc.
+        </li>
+        <li><strong>Referral Traffic:</strong> links from other websites</li>
+        <li>
+          <strong>Direct Traffic:</strong> access through direct input domain to
+          the browsers.
+        </li>
+        <li>
+          <strong>Social Traffic:</strong> access through social media such as
+          Facebook, Twitter, Google +, etc.
+        </li>
+        <li><strong>Other Traffic:</strong> all other traffic sources</li>
+      </ul>
+      <table>
+        <thead>
+          <tr>
+            <th>Traffic Source</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Search Traffic</td>
+            <td>{{ ga4_data.traffic_by_type.search | int }}</td>
+          </tr>
+          <tr>
+            <td>Referral Traffic</td>
+            <td>{{ ga4_data.traffic_by_type.referral | int }}</td>
+          </tr>
+          <tr>
+            <td>Direct Traffic</td>
+            <td>{{ ga4_data.traffic_by_type.direct | int }}</td>
+          </tr>
+          <tr>
+            <td>Social Traffic</td>
+            <td>{{ ga4_data.traffic_by_type.social | int }}</td>
+          </tr>
+          <tr>
+            <td>Other Traffic</td>
+            <td>{{ ga4_data.traffic_by_type.other | int }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="chart-container-pdf no-page-break">
+        <img
+          src="data:image/png;base64,{{ traffic_source_chart_base64 }}"
+          alt="Traffic Sources Distribution Chart"
+          style="width: 400mm; height: auto"
+        />
+      </div>
+    </div>
+
+    <!-- GNA Solutions Pages -->
+    <div class="page-section gna-solution-page">
+      <h1>GNA SOLUTIONS</h1>
+      <div class="info-box" style="background: #f8f9fc">
+        <strong>YOUR DESIGNATED DESIGN, DEVELOPMENT AND MARKETING AGENCY</strong
+        ><br />
+        Established in 2008, GNA Solutions combines the expertise of its
+        founders with the passionate spirit of a young and resourceful
+        company.<br /><br />
+        Dedicated to making websites beyond any cook cutter template approach,
+        GNA Solutions builds web presences attuned to each individual client's
+        company.<br /><br />
+        Our mission is to create sites and campaigns that capture individual
+        companies and their philosophies at a glance; creating a company
+        presence that is the definitive way to bring clients to the business.<br />
+      </div>
+      <div
+        style="
+          text-align: center;
+          font-size: 28pt;
+          font-weight: 700;
+          color: #22223b;
+          line-height: 1.4;
+          margin: 40px 20px;
+          padding: 30px;
+          background: #f0f4f8;
+          border: 2px solid #4e54c8;
+        "
+      >
+        Our mission is to provide reliable, devoted, and effective services,<br />
+        without the high expense. Designed to accomplish your ambitions and<br />
+        future success, "Your Business is Our Business"
+      </div>
+    </div>
+
+    <div class="page-section gna-solution-page">
+      <h1>GNA SOLUTIONS</h1>
+      <h3>We Create Individual Websites That Reflect Your Unique Company</h3>
+      <p>
+        GNA Solutions aims at bringing a client's ideas into the real world. But
+        even more than that we want to show clients what they may never have
+        thought of, but fundamentally require for their businesses to work in
+        the modern electronic age. Our continual Research and Development, our
+        state-of-the-art methods get companies to reach their potential.
+      </p>
+      <h3>One Stop Online Solutions</h3>
+      <h3>
+        GET THE WEB PRESENCE YOU NEED WHILE SHOWING THE WORLD JUST WHO YOU ARE
+        AND WHERE YOU ARE GOING.
+      </h3>
+      <p>
+        But a web presence is more than just the company's website; more than a
+        business card on the client's computer screen. At GNA Solutions we
+        integrate a client's business accounting systems with social networking
+        systems, e-commerce and every other aspect of corporate operation. We
+        believe we can do away with format issues, transfers between platforms,
+        and the endless administration that takes up so much time. GNA Solutions
+        can tune a client's business into a single, smooth, integrated
+        operation. Forgo the red tape, endless details, the ever-changing
+        technology and concentrate on running the business itself.
+      </p>
+    </div>
+
+    <div class="page-section gna-solution-page">
+      <h1>GNA SOLUTIONS</h1>
+      <h3>ANALYSING AND DESIGNING PROJECTS FROM ALL ANGLES</h3>
+      <h3>CONNECT YOUR BUSINESS HARNESS THE NET</h3>
+      <p>
+        We believe in elegant design: a website that's exactly as it was meant
+        to be. No one should have to search for the words and images to express
+        the multi-natured aspects of their company anymore than a potential
+        client should have to scour the net in search of your services. Rather,
+        we aim at putting the finger on exactly what your company is about. Like
+        the perfect mission statement that sums up everything in one line we aim
+        at a website that explains a company at one glance.
+      </p>
+      <h3>AFFORDABLE ONLINE SOLUTIONS</h3>
+      <h3>WEBSITE DESIGN EMARKETING EXPERTS</h3>
+      <p>
+        We want clients to get past the mentality that just solves problems. We
+        want to revolutionise the approach and create a system where the
+        problems could never occur. No part of a company's operations cannot be
+        improved by utilizing the Internet. The web has the potential to get us
+        in touch with everything; computers are only limited by the imagination
+        of the people who use them. Never before has there been more opportunity
+        to unleash creative approaches and turn them into practical ways to
+        connect with the world.
+      </p>
+    </div>
+
+    <div class="back-cover-container">
+      <!-- Back Cover -->
+      <table class="back-cover-table">
+        <tr>
+          <td class="back-cover-cell">
+            <img
+              class="back-cover-image"
+              src="data:image/png;base64,{{ back_cover_image_base64 }}"
+              alt="Back Cover"
+            />
+          </td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

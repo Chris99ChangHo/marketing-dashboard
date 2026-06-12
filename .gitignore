@@ -1,0 +1,46 @@
+# Python / Virtual Environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+venv/
+env/
+.venv/
+
+# System / IDE
+.DS_Store
+.vscode/
+Thumbs.db
+
+# Logs
+*.log
+stderr.log
+error.log
+
+# Sensitive Configuration & Credentials
+.env
+instance/clients.json
+credentials.json
+client_secret.json
+
+# Runtime & Temporary Files
+tmp/
+*.tmp
+*.sqlite3
+*.db
+
+# Instance data (JWT blacklist DB, etc.)
+instance/data/
+
+# Server / Deployment specific
+.htaccess
+.well-known/
+passenger_wsgi.pyc
+cgi-bin/
+
+# Public / Compiled assets (if auto-generated)
+public/
+
+# OS
+Thumbs.db
+ehthumbs.db

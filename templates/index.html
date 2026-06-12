@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<!--
+index.html: Main HTML template for the marketing dashboard.
+
+This file defines the structure and layout of the main dashboard page.
+It dynamically displays data fetched from Google Analytics and SE Ranking,
+and provides interactive elements for user input and report generation.
+
+Key Aspects:
+- Renders the primary user interface for data visualization.
+- Receives dynamic data (user_info, serverTime) from the Flask backend via Jinja2.
+- Integrates with various JavaScript modules for data fetching, chart rendering,
+  and UI interactions.
+- Utilizes Tailwind CSS for styling and responsiveness.
+- Includes external libraries like Chart.js for data visualization,
+  html2canvas and jspdf for client-side PDF generation.
+
+Dependencies:
+- Jinja2 (for server-side template rendering)
+- Tailwind CSS (for styling)
+- Chart.js, Chart.js Datalabels Plugin (for charts)
+- html2canvas, jspdf (for client-side PDF generation)
+- Local JavaScript modules: jwt-manager.js, main.js, session-guard.js,
+  domElements.js, apiService.js, chartService.js, ga4DisplayService.js,
+  serankingDisplayService.js, pdfService.js, uiService.js, utils.js
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GNA Report</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            min-height: 100vh;
+        }
+        .card {
+            border-radius: 1rem;
+            box-shadow: 0 4px 12px -2px rgba(0,0,0,0.12), 0 2px 8px -2px rgba(0,0,0,0.08);
+        }
+        .chart-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 340px; 
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .seranking-chart-card {
+            display: flex;
+            flex-direction: column;
+        }
+        .seranking-keyword-changes-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ranking-chart-canvas-wrapper {
+            flex-grow: 1; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px; 
+        }
+        #rankingChangeDistributionChartCanvas {
+            max-height: 100%; 
+            max-width: 100%; 
+        }
+
+        .keyword-tables-wrapper {
+            flex-grow: 1;
+            padding-right: 0.5rem;
+            margin-top: 0; 
+            padding-top: 0;
+        }
+
+        .keyword-changes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem; 
+            font-size: 0.9rem;
+        }
+        .keyword-changes-table th, .keyword-changes-table td {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 0.9rem; 
+        }
+        .keyword-changes-table th {
+            background-color: #f8fafc; 
+            font-weight: 700;
+            color: #374151;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .new-entry-item {
+            color: #10B981; /* Green for new entries */
+            font-weight: 600;
+            margin-bottom: 0.25rem; 
+            font-size: 0.9rem; 
+        }
+        .disappeared-item {
+            color: #6B7280; /* Gray for disappeared */
+            font-weight: 600;
+            margin-bottom: 0.25rem; 
+            font-size: 0.9rem; 
+        }
+        .rank-up {
+            color: #10B981; /* Tailwind green-500 */
+        }
+        .rank-down {
+            color: #6B7280; /* Tailwind gray-500 */
+        }
+        .rank-neutral {
+            color: #000; /* black */
+        }
+        .rank_na {
+            color: #9CA3AF; /* Tailwind gray-400 */
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1.15rem;
+        }
+        th, td {
+            padding: 1rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background-color: #f3f4f6;
+            font-weight: 700;
+            color: #374151;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .file-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .file-input-wrapper input:where([type="file"]) {
+            flex-grow: 1;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+        }
+        .clear-button {
+            padding: 0.5rem 1.2rem;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            white-space: nowrap;
+        }
+        .clear-button:hover {
+            background-color: #dc2626;
+        }
+        .input-with-default {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .input-with-default input:where([type="text"]),
+        .input-with-default input:where([type="number"]) {
+            flex-grow: 1;
+            min-width: 0;
+            font-size: 1.1rem;
+        }
+        .input-with-default span {
+            white-space: nowrap;
+            color: #6b7280;
+            font-size: 1rem;
+        }
+        @media (max-width: 1024px) { 
+            .grid-cols-1-lg-grid-cols-2 > * { 
+                align-items: stretch;
+            }
+        }
+        @media (max-width: 768px) {
+            .card {
+                padding: 1rem !important;
+            }
+            h1, h2 {
+                font-size: 1.5rem !important;
+            }
+            table {
+                font-size: 1rem;
+            }
+        }
+</style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body class="p-4">
+    <script>
+        window.APP_CONTEXT = {
+            userInfo: {{ user_info | tojson }},
+            serverTime: {{ now }}
+        };
+    </script>
+    <div id="mainDashboardContainer" class="max-w-[1600px] w-full mx-auto bg-white p-8 card">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-10">GNA Report Dashboard</h1>
+
+        <div class="flex flex-col md:flex-row items-center justify-center gap-6 mb-10 text-lg">
+            <label for="clientSelect" class="text-gray-700 font-semibold">Select Client:</label>
+            <select id="clientSelect" class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-lg min-w-[160px]">
+            </select>
+            <label for="startDate" class="text-gray-700 font-semibold">Start Date:</label>
+            <input type="date" id="startDate" class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-lg">
+            <label for="endDate" class="text-gray-700 font-semibold">End Date:</label>
+            <input type="date" id="endDate" class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-lg">
+            <button id="loadDataBtn" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition card text-lg">
+                Load Data
+            </button>
+        </div>
+
+        <div id="errorMessage" class="text-red-600 text-center mb-6 font-semibold text-lg"></div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+            <div class="bg-blue-50 p-8 card flex flex-col items-center justify-center">
+                <h2 class="text-2xl font-bold text-blue-800 mb-3">Total Sessions</h2>
+                <p id="totalSessions" class="text-5xl font-extrabold text-blue-600">0</p>
+            </div>
+            <div class="bg-green-50 p-8 card flex flex-col items-center justify-center">
+                <h2 class="text-2xl font-bold text-green-800 mb-3">Total Users</h2>
+                <p id="totalUsers" class="text-5xl font-extrabold text-green-600">0</p>
+            </div>
+            <div class="bg-purple-50 p-8 card flex flex-col items-center justify-center">
+                <h2 class="text-2xl font-bold text-purple-800 mb-3">Average Engagement Time</h2>
+                <p id="avgEngagementTime" class="text-5xl font-extrabold text-purple-600">0s</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+            <div class="bg-gray-50 p-8 card">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Google Analytics Detailed Metrics</h2>
+                <div class="text-gray-700 text-lg space-y-3">
+                    <p><strong>New Users:</strong> <span id="newUsers">0</span></p>
+                    <p><strong>Returning Users:</strong> <span id="returningUsers">0</span></p>
+                    <p><strong>Total Page Views:</strong> <span id="totalPageViews">0</span></p>
+                    <p><strong>Page/Visit:</strong> <span id="pagePerVisit">0</span></p>
+                    <p><strong>Engagement Rate:</strong> <span id="engagementRate">0%</span></p>
+                    <p><strong>Last Month Total Page Views:</strong> <span id="lastMonthTotalPageViews">0</span></p>
+                    <p><strong>Last Month Page/Visit:</strong> <span id="lastMonthPagePerVisit">0</span></p>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-8 card">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Device Users Details</h2>
+                <div class="text-gray-700 text-lg space-y-3">
+                    <p><strong>Mobile Users:</strong> <span id="mobileUsers">0</span></p>
+                    <p><strong>Desktop Users:</strong> <span id="desktopUsers">0</span></p>
+                    <p><strong>Tablet Users:</strong> <span id="tabletUsers">0</span></p>
+                    <p><strong>Last Month Mobile Users:</strong> <span id="lastMonthMobileUsers">0</span></p>
+                    <p><strong>Last Month Desktop Users:</strong> <span id="lastMonthDesktopUsers">0</span></p>
+                    <p><strong>Last Month Tablet Users:</strong> <span id="lastMonthTabletUsers">0</span></p>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-8 card">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Traffic Type</h2>
+                <div class="text-gray-700 text-lg space-y-3">
+                    <p><strong>Search Traffic:</strong> <span id="searchTraffic">0</span></p>
+                    <p><strong>Referral Traffic:</strong> <span id="referralTraffic">0</span></p>
+                    <p><strong>Direct Traffic:</strong> <span id="directTraffic">0</span></p>
+                    <p><strong>Social Traffic:</strong> <span id="socialTraffic">0</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+            <div class="bg-gray-50 p-8 card flex flex-col">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Device User Ratio</h2>
+                <div class="chart-container">
+                    <canvas id="deviceChart"></canvas>
+                </div>
+                <div id="deviceUsersText" class="mt-6 text-center text-gray-700 text-lg"></div>
+            </div>
+            <div class="bg-gray-50 p-8 card flex flex-col">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Key Traffic Sources</h2>
+                <div class="chart-container">
+                    <canvas id="trafficSourceChart"></canvas>
+                </div>
+                <div id="trafficSourcesText" class="mt-6 text-center text-gray-700 text-lg"></div>
+            </div>
+        </div>
+        
+        <div class="bg-yellow-50 p-8 card">
+            <h2 class="text-2xl font-bold text-yellow-800 mb-6 text-center">SERanking Data (Keyword Ranking)</h2>
+
+            <div id="serankingData" class="text-gray-700 text-lg"></div>
+
+            <div id="serankingKeywordTable" class="table-container mt-6">
+            </div>
+
+            <div class="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md seranking-chart-card">
+                    <h3 class="text-lg font-bold text-center mb-4 text-gray-800">Ranking Change Distribution</h3>
+                    <div class="ranking-chart-canvas-wrapper">
+                        <canvas id="rankingChangeDistributionChartCanvas"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md seranking-keyword-changes-card">
+                    <h3 class="text-lg font-bold text-center mb-4 text-gray-800">Keyword Ranking Changes</h3>
+                    <div id="combinedKeywordsTableContainer" class="mt-4 keyword-tables-wrapper"> 
+                        <p class="text-center text-gray-600">Loading keyword changes...</p>
+                        </div>
+                </div>
+            </div>
+
+            <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-lg font-bold text-center mb-4 text-gray-800">New Entries in Top 100</h3>
+                    <ul id="top100NewEntriesList" class="list-disc pl-5 text-gray-800 space-y-1">
+                        </ul>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-lg font-bold text-center mb-4 text-gray-800">Disappeared from Top 100</h3>
+                    <ul id="top100DisappearedList" class="list-disc pl-5 text-gray-800 space-y-1">
+                        </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-red-50 p-8 card">
+            <h2 class="text-2xl font-bold text-red-800 mb-6 text-center">Google Ads</h2>
+            
+            <div class="mb-8 p-6 bg-white rounded-lg shadow-sm">
+                <h3 class="text-xl font-semibold text-gray-800 mb-5">Campaign Basic Settings</h3>
+                <div class="space-y-4">
+                    <div class="flex flex-col md:flex-row md:items-center gap-2">
+                        <strong class="w-32 flex-shrink-0 text-gray-700">Location:</strong>
+                        <input type="text" id="adsLocation" class="p-2 border rounded-lg text-lg flex-grow" value="Sydney">
+                        <span class="text-gray-500 text-sm md:w-32 md:text-right">(default: Sydney)</span>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center gap-2">
+                        <strong class="w-32 flex-shrink-0 text-gray-700">Language:</strong>
+                        <input type="text" id="adsLanguage" class="p-2 border rounded-lg text-lg flex-grow" value="English">
+                        <span class="text-gray-500 text-sm md:w-32 md:text-right">(default: English)</span>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center gap-2">
+                        <strong class="w-32 flex-shrink-0 text-gray-700">Devices:</strong>
+                        <input type="text" id="adsDevices" class="p-2 border rounded-lg text-lg flex-grow" value="All devices">
+                        <span class="text-gray-500 text-sm md:w-32 md:text-right">(default: All devices)</span>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center gap-2">
+                        <strong class="w-32 flex-shrink-0 text-gray-700">Daily Budget:</strong>
+                        <input type="number" id="adsDailyBudget" class="p-2 border rounded-lg text-lg w-32 md:w-auto" value="0">
+                        <span class="text-gray-500 text-sm md:w-32 md:text-right">(number only)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-8 p-6 bg-white rounded-lg shadow-sm">
+                <h3 class="text-xl font-semibold text-gray-800 mb-5">Ad Group CSV Upload</h3>
+                <div class="space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2 file-input-wrapper">
+                        <strong class="w-48 flex-shrink-0 text-gray-700">Upload Ad Group CSV 1:</strong>
+                        <input type="file" id="uploadCsv1" class="text-gray-700 text-base flex-grow">
+                        <button class="clear-button px-4 py-2" onclick="clearFileInput('uploadCsv1')">CLEAR</button>
+                    </div>
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2 file-input-wrapper">
+                        <strong class="w-48 flex-shrink-0 text-gray-700">Upload Ad Group CSV 2:</strong>
+                        <input type="file" id="uploadCsv2" class="text-gray-700 text-base flex-grow">
+                        <button class="clear-button px-4 py-2" onclick="clearFileInput('uploadCsv2')">CLEAR</button>
+                    </div>
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2 file-input-wrapper">
+                        <strong class="w-48 flex-shrink-0 text-gray-700">Upload Ad Group CSV 3:</strong>
+                        <input type="file" id="uploadCsv3" class="text-gray-700 text-base flex-grow">
+                        <button class="clear-button px-4 py-2" onclick="clearFileInput('uploadCsv3')">CLEAR</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 bg-white rounded-lg shadow-sm">
+                <h3 class="text-xl font-semibold text-gray-800 mb-5">Smart Campaign Setting</h3>
+                <div class="space-y-4">
+                    <div class="flex flex-col md:flex-row md:items-center gap-2">
+                        <strong class="w-32 flex-shrink-0 text-gray-700">Campaign Name:</strong>
+                        <input type="text" id="manualCampaign" class="p-2 border rounded-lg text-lg flex-grow" placeholder="Campaign Name">
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center gap-2">
+                        <strong class="w-32 flex-shrink-0 text-gray-700">Impression:</strong>
+                        <input type="number" id="manualImpression" class="p-2 border rounded-lg text-lg flex-grow" placeholder="Impression">
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center gap-2">
+                        <strong class="w-32 flex-shrink-0 text-gray-700">Cost:</strong>
+                        <input type="number" step="0.01" id="manualCost" class="p-2 border rounded-lg text-lg flex-grow" placeholder="Cost">
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center gap-2">
+                        <strong class="w-32 flex-shrink-0 text-gray-700">Interactions:</strong>
+                        <input type="number" id="manualInteractions" class="p-2 border rounded-lg text-lg flex-grow" placeholder="Interactions">
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center gap-2">
+                        <strong class="w-32 flex-shrink-0 text-gray-700">Average Cost:</strong>
+                        <input type="number" step="0.01" id="manualAvgCost" class="p-2 border rounded-lg text-lg flex-grow" placeholder="Average Cost">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="aiSummarySection" class="mt-10 p-8 card bg-gray-800 text-white">
+            <h2 class="text-3xl font-bold text-center mb-6">AI-Powered Insights</h2>
+            <div class="flex justify-center mb-6">
+                <button id="generateAiSummaryBtn" class="px-8 py-3 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition card text-lg">
+                    Generate AI Summary
+                </button>
+            </div>
+            <div id="aiSummarySpinner" class="hidden justify-center items-center mb-4">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                <p class="ml-3">Generating insights...</p>
+            </div>
+            <div id="aiSummaryResult" class="p-6 bg-gray-700 rounded-lg whitespace-pre-wrap text-lg">
+                Click the button to generate an AI-powered summary of the current data.
+            </div>
+        </div>
+
+                <div class="bg-gray-50 p-8 card mt-10">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Report Settings</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Front Cover Selector -->
+                <div id="front-cover-selection-area" class="flex flex-col items-center gap-4 p-4 border rounded-lg">
+                    <p class="text-lg font-semibold text-gray-700">Front Cover</p>
+                    <img id="selectedFrontCoverPreview" src="https://placehold.co/297x210.png?text=Select+Front+Cover" alt="Selected Front Cover Preview" class="w-64 h-48 object-cover rounded-lg shadow-md border">
+                    <button id="openFrontCoverModalBtn" class="px-6 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition">
+                        Select Image
+                    </button>
+                </div>
+                <!-- Back Cover Selector -->
+                <div id="back-cover-selection-area" class="flex flex-col items-center gap-4 p-4 border rounded-lg">
+                    <p class="text-lg font-semibold text-gray-700">Back Cover</p>
+                    <img id="selectedBackCoverPreview" src="https://placehold.co/297x210.png?text=Select+Back+Cover" alt="Selected Back Cover Preview" class="w-64 h-48 object-cover rounded-lg shadow-md border">
+                    <button id="openBackCoverModalBtn" class="px-6 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition">
+                        Select Image
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row items-center justify-center gap-6 mt-10">
+            <button id="generateDashboardPdfBtn" class="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition card text-lg">
+                Generate Dashboard PDF
+            </button>
+            <button id="generatePdfReportBtn" class="px-8 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition card text-lg">
+                Generate PDF Report
+            </button>
+        </div>
+        
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <!-- Load JWT manager first (for interceptor setup) -->
+    <script type="module" src="{{ url_for('static', filename='js/jwt-manager.js') }}"></script> 
+    <!-- Main application logic -->
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/session-guard.js', v=now) }}"></script>
+    <script>
+        function clearFileInput(id) {
+            document.getElementById(id).value = '';
+        }
+    </script>
+
+    <div id="coverImageModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-2xl font-bold text-gray-800">Select a Cover Image</h3>
+                <button id="closeCoverImageModalBtn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+            </div>
+            <div id="coverImageList" class="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 overflow-y-auto">
+                <!-- Images will be loaded here by JavaScript -->
+                <p class="col-span-full text-center text-gray-500">Loading images...</p>
+            </div>
+            <div class="p-6 border-t border-gray-200 flex justify-end gap-4">
+                <button id="cancelCoverImageSelectionBtn" class="px-6 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                <button id="confirmCoverImageSelectionBtn" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition">Confirm</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

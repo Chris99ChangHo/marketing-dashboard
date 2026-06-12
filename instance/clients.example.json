@@ -1,0 +1,22 @@
+{
+  "clients": [
+    {
+      "id": "client_a",
+      "name": "Client A",
+      "ga4_property_id": "111111111",
+      "seranking_site_id": "1111111"
+    },
+    {
+      "id": "client_b",
+      "name": "Client B",
+      "ga4_property_id": "222222222",
+      "seranking_site_id": "2222222"
+    },
+    {
+      "id": "client_c",
+      "name": "Client C",
+      "ga4_property_id": "333333333",
+      "seranking_site_id": "3333333"
+    }
+  ]
+}
