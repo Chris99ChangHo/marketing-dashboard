@@ -6,7 +6,6 @@ __pycache__/
 venv/
 env/
 .venv/
-.env.example/
 
 # System / IDE
 .DS_Store
