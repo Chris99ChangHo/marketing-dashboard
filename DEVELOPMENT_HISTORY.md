@@ -9,11 +9,11 @@
 - **프로젝트 목적**: 수작업으로 약 20분 이상 소요되던 마케팅 보고서 작성 프로세스의 비효율을 해결하기 위해, 시스템 권한이 제한된 환경에서도 안정적으로 동작하는 데이터 시각화 및 PDF 자동화 구축.
 - **기술 스택**:
   <br>
-  <img src="[https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)"/>
-  <img src="[https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)"/>
-  <img src="[https://img.shields.io/badge/Matplotlib-11557c?style=for-the-badge&logo=python&logoColor=white](https://img.shields.io/badge/Matplotlib-11557c?style=for-the-badge&logo=python&logoColor=white)"/>
-  <img src="[https://img.shields.io/badge/xhtml2pdf-E34F26?style=for-the-badge&logo=html5&logoColor=white](https://img.shields.io/badge/xhtml2pdf-E34F26?style=for-the-badge&logo=html5&logoColor=white)"/>
-  <img src="[https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)"/>
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Matplotlib-11557c?style=for-the-badge&logo=python&logoColor=white"/>
+  <img src="https://img.shields.io/badge/xhtml2pdf-E34F26?style=for-the-badge&logo=html5&logoColor=white"/>
+  <img src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white"/>
 
 단순한 API 데이터 호출을 넘어, 백엔드 서버 사이드 렌더링과 순수 파이썬(Pure Python) 기반의 PDF 변환 로직을 결합하여 외부 시스템 바이너리 의존성을 완벽하게 제거했습니다.
 
@@ -59,3 +59,23 @@ def create_chart_image_base64(data):
     plt.close()
     
     return base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+```
+
+### B. 프로세스 킬링(Signal 15)의 원인 분석 및 선제적 방어
+
+서버 사이드 차트 렌더링을 위해 Matplotlib, NumPy, OpenBLAS를 도입한 직후, 서버(Passenger WSGI)가 빈번하게 강제 종료(SIGTERM)되는 치명적인 장애가 발생했습니다.
+원인 분석 결과, 고성능 수치 연산 라이브러리들이 연산 속도 향상을 위해 시스템 코어 수만큼 멀티 스레드를 무단 생성했고, 이것이 공유 호스팅의 엄격한 스레드 제한(Thread Limit)을 초과한 것이었습니다. 이를 해결하기 위해 애플리케이션 진입점 최상단에 멀티 스레딩을 강제로 억제하는 환경 변수를 주입하여 런타임 안정성을 확보했습니다.
+
+```python
+# [passenger_wsgi.py: 스레드 초과 킬링 방어 로직 발췌]
+
+import os
+
+# 라이브러리가 메모리에 로드되기 전, 멀티스레드 생성을 OS 수준에서 원천 차단
+# 공유 리소스 스레드 초과로 인한 SIGTERM(Signal 15) 방어
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['GOTO_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
+
+from app import application
+```
