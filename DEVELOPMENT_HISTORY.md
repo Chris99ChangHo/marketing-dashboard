@@ -79,3 +79,10 @@ os.environ['OMP_NUM_THREADS'] = '1'
 
 from app import application
 ```
+
+## 4. AI Adoption & Prompt Engineering (AI 도입 및 업무 자동화 성과)
+**💡 "AI를 비즈니스 인사이트 도출 도구이자, 시스템 디버깅을 위한 Co-Pilot으로 활용했습니다."**
+
+- **멀티 스레드 충돌 에러의 신속한 디버깅**: 서버 다운(SIGTERM) 현상 발생 시, 서버의 로그와 cPanel 환경의 제약 조건을 다중 LLM(ChatGPT, Claude)에 교차 검증하여, OpenBLAS의 스레드 한계 초과라는 근본 원인을 빠르게 식별하고 OS 환경 변수 튜닝이라는 해결책을 도출했습니다.
+
+- **마케팅 데이터 AI 자동 요약**: 단순히 데이터 수치만 보여주는 대시보드를 넘어, OpenAI API를 연동하여 GA4 및 SERanking의 증감 추이를 자연어로 분석하고 브리핑용 요약본을 자동 생성함으로써 리포트의 비즈니스 퀄리티를 한 단계 끌어올렸습니다.
