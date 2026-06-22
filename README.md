@@ -1,6 +1,6 @@
 # Marketing Dashboard & Automated Reporting System
 
-> **수작업 보고서 30분 → 1-Click 자동화** | Google Analytics 4 + SERanking + OpenAI 연동 마케팅 대시보드
+> **수작업 보고서 20분 → 2분으로 단축** | Google Analytics 4 + SERanking + OpenAI 연동 마케팅 대시보드
 
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=flat&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
@@ -14,31 +14,32 @@
 |------|------|
 | **README.md** (현재 문서) | 프로젝트 개요, 주요 기능, 기술 스택, 설정 방법 |
 | [**ARCHITECTURE.md**](ARCHITECTURE.md) | 백엔드/프론트엔드 모듈 레퍼런스 및 상세 워크플로우 분석 |
-| [**DEVELOPMENT_HISTORY.md**](DEVELOPMENT_HISTORY.md) | 개발 과정에서 마주한 기술적 난관과 해결 여정 (5전 6기의 PDF 자동화 등) |
+| [**DEVELOPMENT_HISTORY.md**](DEVELOPMENT_HISTORY.md) | 인프라 제약(SIGTERM) 극복 및 하이브리드 PDF 렌더링 파이프라인 구축기 |
 
 ---
 
 ## 🚀 프로젝트 개요 및 비즈니스 임팩트
 
-수작업으로 진행되던 마케팅 보고서 작성 프로세스를 혁신적으로 단축한 **마케팅 대시보드 및 1-Click PDF 리포트 자동화** 솔루션입니다. Google Analytics 4 (GA4)와 SERanking API를 연동하여 핵심 지표를 대시보드 형태로 제공하며, 버튼 한 번으로 픽셀 퍼펙트(Pixel-Perfect)한 브리핑용 PDF를 추출합니다.
+수작업으로 진행되던 마케팅 보고서 작성 프로세스의 병목을 해결한 **통합 마케팅 대시보드 및 리포트 자동화** 솔루션입니다. 
 
-- 📉 **업무 효율 극대화**: 클라이언트별 보고서 작성에 소요되던 **약 20분의 수작업을 2분으로 단축**
-- 📊 **데이터 통합 대시보드**: 트래픽(GA4)과 키워드 순위(SERanking)를 하나의 직관적인 뷰로 통합
-- 🤖 **AI 인사이트**: OpenAI API를 활용한 데이터 요약으로 마케터-클라이언트 커뮤니케이션 비용 절감
+기존에는 GA4 등 각 플랫폼에 개별 접속하여 수치를 일일이 복사하고 붙여넣는 방식으로 리포트 작성에 약 20분이 소요되었습니다. 본 시스템을 통해 **드롭다운에서 고객사를 선택하는 즉시 핵심 지표(GA4, SERanking)가 연동되어 대시보드에 시각화**되며, OpenAI 기반의 인사이트 요약 모듈을 거쳐 **단 2분 만에 픽셀 퍼펙트(Pixel-Perfect)한 브리핑용 PDF를 추출**할 수 있도록 업무 파이프라인을 혁신했습니다.
+
+- 📉 **업무 효율 극대화**: 수동 데이터 기입에 의존하던 약 20분의 리포팅 과정을 시스템 기반의 2분 프로세스로 단축
+- 📊 **데이터 통합 뷰**: 트래픽(GA4)과 키워드 순위(SERanking) API 실시간 호출 및 통합 시각화
+- 🤖 **AI 인사이트**: AI 요약 기능을 통한 빠르고 정확한 데이터 해석 지원
 
 ---
 
 ## 🔑 핵심 기능
 
-### 1. 실시간 마케팅 대시보드
-- GA4 연동: 세션, 사용자, 이탈률, 전환율 등 핵심 지표 실시간 시각화 (Chart.js)
-- SERanking 연동: 키워드별 검색 순위 추이 및 변동 현황
-- 멀티 클라이언트 지원: `clients.json` 기반 다중 고객사 전환
+### 1. 실시간 마케팅 대시보드 및 데이터 파이프라인
+- GA4 및 SERanking 연동: 핵심 지표 실시간 시각화 (Chart.js)
+- **데이터 무결성 검수(QA)**: API 연동 시 발생하는 예외(Exception) 처리 및 에러 로깅을 통해 결측치(Missing Value) 방어 로직 적용
+- 멀티 클라이언트 지원: 드롭다운 기반 다중 고객사 조회 및 `clients.json` 연동 아키텍처
 
-### 2. 1-Click PDF 자동화
-- 서버 사이드 차트 렌더링 (Matplotlib → Base64 → xhtml2pdf)
-- Pillow 기반 동적 커버 이미지 생성
-- WordPress 미디어 라이브러리에서 커버 이미지 자동 연동
+### 2. PDF 리포팅 자동화
+- 서버 사이드 차트 렌더링 (Matplotlib → Base64 → xhtml2pdf) 기반의 시스템 독립적 아키텍처 구축
+- Pillow 기반 동적 커버 이미지 생성 및 WordPress 미디어 라이브러리 연동
 
 ### 3. 엔터프라이즈급 보안 아키텍처
 - **JWT 이중 세션 (Access/Refresh Token)**: Flask-JWT-Extended 기반
